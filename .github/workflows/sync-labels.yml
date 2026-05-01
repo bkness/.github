@@ -1,0 +1,43 @@
+name: Sync Labels
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = [
+              { name: 'bug',             color: 'd73a4a', description: "Something isn't working" },
+              { name: 'feature',         color: 'a2eeef', description: 'New feature or improvement' },
+              { name: 'cleanup',         color: '0075ca', description: 'Maintenance or refactor' },
+              { name: 'security',        color: 'e4e669', description: 'Security related' },
+              { name: 'backend',         color: '0052cc', description: 'Backend changes' },
+              { name: 'frontend',        color: 'bfd4f2', description: 'Frontend changes' },
+              { name: 'auth',            color: 'f9d0c4', description: 'Auth related' },
+              { name: 'priority:high',   color: 'b60205', description: 'High priority' },
+              { name: 'priority:medium', color: 'fbca04', description: 'Medium priority' },
+              { name: 'priority:low',    color: '0e8a16', description: 'Low priority' },
+            ];
+
+            for (const label of labels) {
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ...label
+                });
+              } catch (e) {
+                if (e.status === 422) {
+                  await github.rest.issues.updateLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    ...label
+                  });
+                }
+              }
+            }
+            console.log('✅ Labels synced');
