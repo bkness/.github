@@ -23,21 +23,35 @@ jobs:
               { name: 'priority:low',    color: '0e8a16', description: 'Low priority' },
             ];
 
-            for (const label of labels) {
-              try {
-                await github.rest.issues.createLabel({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  ...label
-                });
-              } catch (e) {
-                if (e.status === 422) {
-                  await github.rest.issues.updateLabel({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
+            const repos = [
+              'dotfiles',
+              'forged-cli',
+              'portfolio',
+              'nightowlz',
+              'petty',
+              'breweries',
+              'devlog',
+              'game-hub',
+              'bkness-stats',
+            ];
+
+            for (const repo of repos) {
+              for (const label of labels) {
+                try {
+                  await github.rest.issues.createLabel({
+                    owner: 'bkness',
+                    repo,
                     ...label
                   });
+                } catch (e) {
+                  if (e.status === 422) {
+                    await github.rest.issues.updateLabel({
+                      owner: 'bkness',
+                      repo,
+                      ...label
+                    });
+                  }
                 }
               }
+              console.log(`✅ Labels synced → bkness/${repo}`);
             }
-            console.log('✅ Labels synced');
