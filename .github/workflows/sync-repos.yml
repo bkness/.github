@@ -1,4 +1,4 @@
-name: Sync Labels
+name: Sync Repos
 
 on:
   workflow_dispatch:
@@ -30,12 +30,13 @@ jobs:
               'nightowlz',
               'petty',
               'breweries',
-              'devlog',
+              'devlogger',
               'game-hub',
               'bkness-stats',
             ];
 
             for (const repo of repos) {
+              // Sync labels
               for (const label of labels) {
                 try {
                   await github.rest.issues.createLabel({
@@ -53,5 +54,13 @@ jobs:
                   }
                 }
               }
-              console.log(`✅ Labels synced → bkness/${repo}`);
+
+              // Repo settings
+              await github.rest.repos.update({
+                owner: 'bkness',
+                repo,
+                delete_branch_on_merge: true,
+              });
+
+              console.log(`✅ Synced → bkness/${repo}`);
             }
