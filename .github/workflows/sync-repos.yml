@@ -1,69 +1,34 @@
 name: Sync Repos
 
+# Keeps every non-archived bkness repo on the same settings: squash-only
+# merges, delete branch on merge, Dependabot alerts + security PRs, secret
+# scanning (public repos), and adds missing shared labels (repos pushed in
+# the last year). Only changes what drifted. Logic: .github/scripts/sync-repos.js
+#
+# SYNC_TOKEN: fine-grained token, All repositories,
+# Administration + Issues: Read and write
+
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: list what would change, change nothing"
+        type: boolean
+        default: true
+  schedule:
+    - cron: "0 14 * * 1"   # Mondays, catches repos created during the week
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/github-script@v7
+      - uses: actions/checkout@v7
+      - uses: actions/github-script@v9
         env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+          # Scheduled runs have no inputs, so they apply for real
+          DRY_RUN: ${{ inputs.dry_run == true }}
         with:
           github-token: ${{ secrets.SYNC_TOKEN }}
           script: |
-            const labels = [
-              { name: 'bug',             color: 'd73a4a', description: "Something isn't working" },
-              { name: 'feature',         color: 'a2eeef', description: 'New feature or improvement' },
-              { name: 'cleanup',         color: '0075ca', description: 'Maintenance or refactor' },
-              { name: 'security',        color: 'e4e669', description: 'Security related' },
-              { name: 'backend',         color: '0052cc', description: 'Backend changes' },
-              { name: 'frontend',        color: 'bfd4f2', description: 'Frontend changes' },
-              { name: 'auth',            color: 'f9d0c4', description: 'Auth related' },
-              { name: 'priority:high',   color: 'b60205', description: 'High priority' },
-              { name: 'priority:medium', color: 'fbca04', description: 'Medium priority' },
-              { name: 'priority:low',    color: '0e8a16', description: 'Low priority' },
-            ];
-
-            const repos = [
-              'dotfiles',
-              'forged-cli',
-              'portfolio',
-              'nightowlz',
-              'petty',
-              'breweries',
-              'devlogger',
-              'game-hub',
-              'bkness-stats',
-            ];
-
-            for (const repo of repos) {
-              // Sync labels
-              for (const label of labels) {
-                try {
-                  await github.rest.issues.createLabel({
-                    owner: 'bkness',
-                    repo,
-                    ...label
-                  });
-                } catch (e) {
-                  if (e.status === 422) {
-                    await github.rest.issues.updateLabel({
-                      owner: 'bkness',
-                      repo,
-                      ...label
-                    });
-                  }
-                }
-              }
-
-              // Repo settings
-              await github.rest.repos.update({
-                owner: 'bkness',
-                repo,
-                delete_branch_on_merge: true,
-              });
-
-              console.log(`✅ Synced → bkness/${repo}`);
-            }
+            const sync = require('./.github/scripts/sync-repos.js');
+            await sync({ github, core, dryRun: process.env.DRY_RUN === 'true' });
